@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Quality Report — {{ scan_date }}</title>
+    <style>
+        /* ── RESET & BASE ─────────────────────── */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 13px;
+            color: #2C3E50;
+            background: #F8F9FA;
+            line-height: 1.6;
+        }
+
+        /* ── LAYOUT ───────────────────────────── */
+        .page       { max-width: 1100px; margin: 0 auto; padding: 40px 32px; }
+        .section    { background: #fff; border-radius: 10px; padding: 28px 32px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+
+        /* ── HEADER ───────────────────────────── */
+        .header {
+            background: linear-gradient(135deg, #1E3A5F 0%, #2E86AB 100%);
+            color: #fff;
+            border-radius: 10px;
+            padding: 36px 40px;
+            margin-bottom: 24px;
+        }
+        .header h1  { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+        .header p   { opacity: .85; font-size: 14px; }
+        .header-meta { display: flex; gap: 32px; margin-top: 20px; flex-wrap: wrap; }
+        .header-meta .meta-item { background: rgba(255,255,255,.15); border-radius: 8px; padding: 10px 18px; }
+        .header-meta .meta-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .06em; }
+        .header-meta .meta-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+
+        /* ── SCORE GAUGE ──────────────────────── */
+        .score-section  { text-align: center; padding: 32px; }
+        .score-circle   {
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 42px; font-weight: 800;
+            margin-bottom: 12px;
+            border: 8px solid;
+        }
+        .score-excellent { border-color: #27AE60; color: #27AE60; background: #EAFAF1; }
+        .score-good      { border-color: #2ECC71; color: #2ECC71; background: #F0FFF4; }
+        .score-fair      { border-color: #F39C12; color: #F39C12; background: #FEF9E7; }
+        .score-poor      { border-color: #E74C3C; color: #E74C3C; background: #FDEDEC; }
+        .score-label     { font-size: 15px; color: #7F8C8D; }
+        .score-grade     { font-size: 22px; font-weight: 700; margin-top: 4px; }
+
+        /* ── SECTION TITLES ───────────────────── */
+        h2 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1E3A5F;
+            border-bottom: 2px solid #EBF5FB;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h3 { font-size: 14px; font-weight: 600; color: #2E86AB; margin-bottom: 12px; }
+
+        /* ── SUMMARY CARDS ────────────────────── */
+        .cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+        .card  {
+            flex: 1; min-width: 140px;
+            border-radius: 8px; padding: 18px 20px;
+            border-left: 4px solid;
+        }
+        .card-critical { border-color: #E74C3C; background: #FDEDEC; }
+        .card-high     { border-color: #E67E22; background: #FEF0E7; }
+        .card-medium   { border-color: #F1C40F; background: #FEFCE7; }
+        .card-low      { border-color: #27AE60; background: #EAFAF1; }
+        .card-info     { border-color: #2E86AB; background: #EBF5FB; }
+        .card-total    { border-color: #1E3A5F; background: #EBF5FB; }
+
+        .card-number { font-size: 32px; font-weight: 800; line-height: 1; }
+        .card-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; opacity: .8; }
+
+        /* ── SEVERITY BADGE ───────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 2px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .05em;
+        }
+        .badge-critical { background: #E74C3C; color: #fff; }
+        .badge-high     { background: #E67E22; color: #fff; }
+        .badge-medium   { background: #F1C40F; color: #7D6608; }
+        .badge-low      { background: #27AE60; color: #fff; }
+        .badge-info     { background: #2E86AB; color: #fff; }
+
+        /* ── TABLES ───────────────────────────── */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead tr { background: #1E3A5F; color: #fff; }
+        thead th { padding: 11px 14px; text-align: left; font-weight: 600; font-size: 12px; }
+        tbody tr { border-bottom: 1px solid #F2F4F7; }
+        tbody tr:hover { background: #F8FBFF; }
+        tbody td { padding: 10px 14px; }
+        tbody tr:last-child { border-bottom: none; }
+
+        /* ── PROGRESS BAR ─────────────────────── */
+        .progress-wrap  { background: #F2F4F7; border-radius: 20px; height: 8px; width: 100%; }
+        .progress-bar   { height: 8px; border-radius: 20px; }
+        .bar-critical   { background: #E74C3C; }
+        .bar-high       { background: #E67E22; }
+        .bar-medium     { background: #F1C40F; }
+        .bar-low        { background: #27AE60; }
+
+        /* ── ANALYSIS BOX ─────────────────────── */
+        .analysis-box {
+            background: #F8FBFF;
+            border: 1px solid #D6EAF8;
+            border-left: 4px solid #2E86AB;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        .analysis-box h4 { font-size: 13px; font-weight: 700; color: #1E3A5F; margin-bottom: 8px; }
+        .analysis-box p  { font-size: 13px; color: #2C3E50; margin-bottom: 6px; }
+        .analysis-label  { font-weight: 600; color: #2E86AB; }
+
+        /* ── SQL BOX ──────────────────────────── */
+        .sql-box {
+            background: #1A252F;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+        .sql-box pre { color: #A9D18E; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; }
+
+        /* ── RISK BADGE ───────────────────────── */
+        .risk-safe        { color: #27AE60; font-weight: 700; }
+        .risk-moderate    { color: #E67E22; font-weight: 700; }
+        .risk-destructive { color: #E74C3C; font-weight: 700; }
+
+        /* ── FOOTER ───────────────────────────── */
+        .footer {
+            text-align: center;
+            color: #95A5A6;
+            font-size: 12px;
+            padding: 24px 0 8px;
+        }
+
+        /* ── PRINT ────────────────────────────── */
+        @media print {
+            body { background: #fff; }
+            .section { box-shadow: none; border: 1px solid #eee; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- ── HEADER ──────────────────────────────── -->
+    <div class="header">
+        <h1>🔍 AI Data Quality Report</h1>
+        <p>Automated scan powered by AI Data Quality & Database Auditor Agent</p>
+        <div class="header-meta">
+            <div class="meta-item">
+                <div class="meta-label">Database</div>
+                <div class="meta-value">{{ db_name }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Scan Date</div>
+                <div class="meta-value">{{ scan_date }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Tables Scanned</div>
+                <div class="meta-value">{{ table_count }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Duration</div>
+                <div class="meta-value">{{ duration }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── QUALITY SCORE ────────────────────────── -->
+    <div class="section score-section">
+        {% if overall_score >= 90 %}
+            <div class="score-circle score-excellent">{{ overall_score }}</div>
+            <div class="score-label">Overall Data Quality Score</div>
+            <div class="score-grade" style="color:#27AE60">Excellent</div>
+        {% elif overall_score >= 75 %}
+            <div class="score-circle score-good">{{ overall_score }}</div>
+            <div class="score-label">Overall Data Quality Score</div>
+            <div class="score-grade" style="color:#2ECC71">Good</div>
+        {% elif overall_score >= 50 %}
+            <div class="score-circle score-fair">{{ overall_score }}</div>
+            <div class="score-label">Overall Data Quality Score</div>
+            <div class="score-grade" style="color:#F39C12">Needs Attention</div>
+        {% else %}
+            <div class="score-circle score-poor">{{ overall_score }}</div>
+            <div class="score-label">Overall Data Quality Score</div>
+            <div class="score-grade" style="color:#E74C3C">Poor — Action Required</div>
+        {% endif %}
+    </div>
+
+    <!-- ── FINDINGS SUMMARY ──────────────────────── -->
+    <div class="section">
+        <h2>📊 Findings Summary</h2>
+        <div class="cards">
+            <div class="card card-total">
+                <div class="card-number">{{ total_findings }}</div>
+                <div class="card-label">Total Findings</div>
+            </div>
+            <div class="card card-critical">
+                <div class="card-number">{{ critical_count }}</div>
+                <div class="card-label">Critical</div>
+            </div>
+            <div class="card card-high">
+                <div class="card-number">{{ high_count }}</div>
+                <div class="card-label">High</div>
+            </div>
+            <div class="card card-medium">
+                <div class="card-number">{{ medium_count }}</div>
+                <div class="card-label">Medium</div>
+            </div>
+            <div class="card card-low">
+                <div class="card-number">{{ low_count }}</div>
+                <div class="card-label">Low</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── FINDINGS BY TYPE ──────────────────────── -->
+    <div class="section">
+        <h2>🔎 Findings by Type</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Issue Type</th>
+                    <th>Count</th>
+                    <th>Severity</th>
+                    <th>Distribution</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in findings_by_type %}
+                <tr>
+                    <td><strong>{{ item.issue_type }}</strong></td>
+                    <td>{{ item.count }}</td>
+                    <td><span class="badge badge-{{ item.severity }}">{{ item.severity }}</span></td>
+                    <td>
+                        <div class="progress-wrap">
+                            <div class="progress-bar bar-{{ item.severity }}"
+                                 style="width: {{ item.pct }}%"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── ALL FINDINGS DETAIL ───────────────────── -->
+    <div class="section">
+        <h2>📋 All Findings</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Table</th>
+                    <th>Column</th>
+                    <th>Issue Type</th>
+                    <th>Severity</th>
+                    <th>Affected Rows</th>
+                    <th>% Affected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in all_findings %}
+                <tr>
+                    <td><strong>{{ f.table_name }}</strong></td>
+                    <td>{{ f.column_name or '—' }}</td>
+                    <td>{{ f.issue_type }}</td>
+                    <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+                    <td>{{ f.affected_rows }}</td>
+                    <td>{{ f.affected_percent }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── LLM ANALYSIS ──────────────────────────── -->
+    {% if llm_analysis %}
+    <div class="section">
+        <h2>🧠 AI Analysis</h2>
+        {% for item in llm_analysis %}
+        <div class="analysis-box">
+            <h4>{{ item.issue_type | upper }} — {{ item.table_name }}{% if item.column_name %}.{{ item.column_name }}{% endif %}</h4>
+            {% if item.llm_explanation %}
+            <p><span class="analysis-label">Explanation:</span> {{ item.llm_explanation }}</p>
+            {% endif %}
+            {% if item.root_cause %}
+            <p><span class="analysis-label">Root Cause:</span> {{ item.root_cause }}</p>
+            {% endif %}
+            {% if item.business_impact %}
+            <p><span class="analysis-label">Business Impact:</span> {{ item.business_impact }}/10</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ── REMEDIATION SCRIPTS ───────────────────── -->
+    {% if remediation_scripts %}
+    <div class="section">
+        <h2>🔧 Remediation Scripts</h2>
+        <p style="margin-bottom:16px;color:#7F8C8D">
+            These scripts require human approval before execution.
+        </p>
+        {% for script in remediation_scripts %}
+        <div class="analysis-box">
+            <h4>
+                Fix for: {{ script.issue_type }} in {{ script.table_name }}
+                <span class="risk-{{ script.risk_level }}" style="margin-left:12px">
+                    ⚠ {{ script.risk_level | upper }} RISK
+                </span>
+            </h4>
+            <p><span class="analysis-label">Status:</span> {{ script.status | upper }}</p>
+            {% if script.explanation %}
+            <p><span class="analysis-label">What this does:</span> {{ script.explanation }}</p>
+            {% endif %}
+            <div class="sql-box">
+                <pre>{{ script.sql_script }}</pre>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ── PER TABLE BREAKDOWN ───────────────────── -->
+    <div class="section">
+        <h2>📁 Per Table Breakdown</h2>
+        {% for table in tables %}
+        <div style="margin-bottom:24px">
+            <h3>{{ table.name }}
+                <span style="font-size:12px;color:#95A5A6;font-weight:400">
+                    — {{ table.row_count }} rows | {{ table.finding_count }} findings
+                </span>
+            </h3>
+            {% if table.findings %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Issue</th>
+                        <th>Severity</th>
+                        <th>Affected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in table.findings %}
+                    <tr>
+                        <td>{{ f.column_name or 'entire table' }}</td>
+                        <td>{{ f.issue_type }}</td>
+                        <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+                        <td>{{ f.affected_rows }} rows ({{ f.affected_percent }}%)</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:#27AE60">✅ No issues found in this table.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ── FOOTER ─────────────────────────────────── -->
+    <div class="footer">
+        Generated by AI Data Quality & Database Auditor Agent •
+        {{ scan_date }} •
+        Scan ID: {{ scan_id }}
+    </div>
+
+</div>
+</body>
+</html>
